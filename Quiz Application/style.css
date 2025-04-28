@@ -1,0 +1,36 @@
+#quizScreen {
+    background: #f9f9f9;
+    padding: 30px;
+    border-radius: 15px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+    animation: fadeIn 1s ease;
+}
+
+#ques {
+    background-color: #3085d6;
+    color: white;
+    padding: 15px;
+    border-radius: 12px;
+    margin-bottom: 20px;
+    font-size: 22px;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+}
+
+div > div {
+    margin: 15px 0;
+    background: #fff;
+    padding: 15px;
+    border: 2px solid #eee;
+    border-radius: 10px;
+    transition: 0.3s;
+}
+
+input[type="radio"]:checked + label {
+    color: #3085d6;
+    font-weight: bold;
+}
+
+div > div:hover {
+    background: #eef4ff;
+    border-color: #3085d6;
+}
