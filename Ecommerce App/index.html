@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <!-- SweetAlert2 CDN -->
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+  <title>eCommerce Store</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: 'Segoe UI', sans-serif;
+      background: #f8f9fa;
+    }
+
+    header {
+      background: #343a40;
+      color: white;
+      padding: 1rem 2rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    header h1 {
+      font-size: 22px;
+      margin: 0;
+    }
+
+    .cart-icon {
+      position: relative;
+      font-size: 22px;
+      cursor: pointer;
+    }
+
+    .cart-icon::after {
+      content: attr(data-count);
+      position: absolute;
+      top: -10px;
+      right: -12px;
+      background: red;
+      color: white;
+      font-size: 12px;
+      padding: 2px 6px;
+      border-radius: 50%;
+      display: inline-block;
+    }
+
+    #productContainer {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 20px;
+      padding: 20px;
+    }
+
+    .productCard {
+      background: white;
+      border-radius: 8px;
+      padding: 15px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+
+    .productCard img {
+      width: 100%;
+      height: 200px;
+      object-fit: contain;
+    }
+
+    .productCard h3 {
+      font-size: 16px;
+      margin: 10px 0;
+    }
+
+    .productCard p {
+      font-size: 14px;
+      margin: 5px 0;
+    }
+
+    .productCard button {
+      background: #007bff;
+      color: white;
+      border: none;
+      padding: 10px;
+      cursor: pointer;
+      border-radius: 5px;
+      margin-top: 10px;
+    }
+
+    .productCard button:hover {
+      background: #0056b3;
+    }
+
+    #cartPopup {
+      display: none;
+      position: fixed;
+      top: 70px;
+      right: 20px;
+      width: 300px;
+      background: white;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+      padding: 20px;
+      border-radius: 10px;
+      z-index: 1000;
+    }
+
+    #cartPopup h3 {
+      margin-top: 0;
+    }
+
+    #cartList {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+    }
+
+    #cartList li {
+      margin-bottom: 10px;
+      border-bottom: 1px solid #ccc;
+      padding-bottom: 5px;
+    }
+
+    .totalPrice {
+      font-weight: bold;
+      margin-top: 15px;
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <h1>My eCommerce Store</h1>
+    <div class="cart-icon" id="cartIcon" data-count="0" title="View Cart">🛒</div>
+  </header>
+
+  <section id="productContainer">
+    <!-- Products go here -->
+  </section>
+
+  <div id="cartPopup">
+    <h3>Your Cart</h3>
+    <ul id="cartList"></ul>
+    <p class="totalPrice" id="totalPrice">Total: $0.00</p>
+  </div>
+<script>
+  const API_URL = "https://fakestoreapi.com/products";
+  const productContainer = document.getElementById("productContainer");
+  const cartIcon = document.getElementById("cartIcon");
+  const cartPopup = document.getElementById("cartPopup");
+  const cartList = document.getElementById("cartList");
+  const totalPriceElem = document.getElementById("totalPrice");
+
+  let cart = [];
+
+  // Fetch all products
+  function fetchProducts() {
+    fetch(API_URL)
+      .then(function(response) {
+        return response.json();
+      })
+      .then(function(products) {
+        displayProducts(products);
+      })
+      .catch(function(error) {
+        console.error("Error loading products:", error);
+      });
+  }
+
+ function displayProducts(products) {
+  for (let i = 0; i < products.length; i++) {
+    let product = products[i];
+
+    let card = document.createElement("div");
+    card.className = "productCard";
+
+    let shortTitle = product.title.length > 40 ? product.title.slice(0, 40) + "..." : product.title;
+
+    card.innerHTML = `
+      <img src="${product.image}" alt="${product.title}">
+      <h3>${shortTitle}</h3>
+      <p>$${product.price.toFixed(2)}</p>
+      <button class="add-to-cart-btn">Add to Cart</button>
+    `;
+
+    // Append card to container
+    productContainer.appendChild(card);
+
+    // Add event listener for the cart button
+    let button = card.querySelector(".add-to-cart-btn");
+    button.addEventListener("click", function () {
+      handleAddToCart(product);
+    });
+  }
+}
+
+
+  // Handle "Add to Cart" click
+  function handleAddToCart(product) {
+    addToCart(product);
+    showAddToCartAlert(product.title);
+  }
+
+  // Add product to cart array
+  function addToCart(product) {
+    let found = false;
+
+    for (let i = 0; i < cart.length; i++) {
+      if (cart[i].id === product.id) {
+        cart[i].qty += 1;
+        found = true;
+        break;
+      }
+    }
+
+    if (!found) {
+      product.qty = 1;
+      cart.push(product);
+    }
+
+    updateCartIcon();
+  }
+
+  // Show SweetAlert on add
+  function showAddToCartAlert(title) {
+    Swal.fire({
+      title: 'Added to Cart!',
+      text: `"${title.slice(0, 30)}..." has been added.`,
+      icon: 'success',
+      confirmButtonText: 'OK',
+      timer: 1500,
+      showConfirmButton: false,
+      toast: true,
+      position: 'top-end'
+    });
+  }
+
+  // Update cart icon counter
+  function updateCartIcon() {
+    let totalItems = 0;
+    for (let i = 0; i < cart.length; i++) {
+      totalItems += cart[i].qty;
+    }
+    cartIcon.setAttribute("data-count", totalItems);
+  }
+
+  // Show or hide the cart
+  cartIcon.addEventListener("click", function() {
+    if (cartPopup.style.display === "block") {
+      cartPopup.style.display = "none";
+    } else {
+      cartPopup.style.display = "block";
+      renderCartItems();
+    }
+  });
+
+  // Show cart content
+  function renderCartItems() {
+    cartList.innerHTML = "";
+    let total = 0;
+
+    if (cart.length === 0) {
+      cartList.innerHTML = "<li>Your cart is empty.</li>";
+    } else {
+      for (let i = 0; i < cart.length; i++) {
+        let item = cart[i];
+        let lineTotal = item.qty * item.price;
+        total += lineTotal;
+
+        let li = document.createElement("li");
+        li.textContent = item.title.slice(0, 30) + " x " + item.qty + " - $" + lineTotal.toFixed(2);
+        cartList.appendChild(li);
+      }
+    }
+
+    totalPriceElem.textContent = "Total: $" + total.toFixed(2);
+  }
+
+  // Load products on page load
+  fetchProducts();
+</script>
+
+
+</body>
+</html>
