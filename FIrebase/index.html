@@ -1,0 +1,523 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Elite Product Dashboard</title>
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="app-container">
+    <!-- Floating Background Shapes -->
+    <div class="bg-shapes">
+      <div class="shape"></div>
+      <div class="shape"></div>
+      <div class="shape"></div>
+      <div class="shape"></div>
+    </div>
+
+    <!-- Authentication Section -->
+    <div id="auth-section" class="auth-container">
+      <div class="auth-card">
+        <div class="auth-header">
+          <h1 id="form-title">Welcome Back</h1>
+          <p id="form-subtitle">Sign in to manage your products</p>
+        </div>
+        <form id="auth-form">
+          <div class="form-group">
+            <label class="form-label">Email Address</label>
+            <input type="email" id="email" class="form-input" placeholder="Enter your email" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Password</label>
+            <input type="password" id="password" class="form-input" placeholder="Enter your password" required>
+          </div>
+          <button type="submit" id="auth-btn" class="btn btn-primary">
+            <i class="fas fa-sign-in-alt"></i>
+            <span id="auth-btn-text">Sign In</span>
+          </button>
+        </form>
+        <div class="auth-switch">
+          <span id="toggle-text">Don't have an account?</span>
+          <a id="toggle-auth">Create Account</a>
+        </div>
+      </div>
+    </div>
+
+    <!-- Dashboard Section -->
+    <div id="dashboard" class="dashboard hidden">
+      <header class="dashboard-header">
+        <div class="header-content">
+          <div class="logo">
+            <div class="logo-icon">
+              <i class="fas fa-cube"></i>
+            </div>
+            <div class="logo-text">ProductHub</div>
+          </div>
+          <div class="header-actions">
+            <button id="add-product-btn" class="btn btn-primary">
+              <i class="fas fa-plus"></i>
+              Add Product
+            </button>
+            <button id="logout" class="btn btn-secondary">
+              <i class="fas fa-sign-out-alt"></i>
+              Logout
+            </button>
+          </div>
+        </div>
+      </header>
+
+      <main class="main-content">
+        <div class="page-header">
+          <h1 class="page-title">Dashboard Overview</h1>
+        
+        </div>
+
+        <div class="stats-grid">
+          <div class="stat-card">
+            <div class="stat-icon">
+              <i class="fas fa-box"></i>
+            </div>
+            <div class="stat-value" id="total-products">0</div>
+            <div class="stat-label">Total Products</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon">
+              <i class="fas fa-dollar-sign"></i>
+            </div>
+            <div class="stat-value" id="total-value">$0</div>
+            <div class="stat-label">Total Value</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon">
+              <i class="fas fa-chart-line"></i>
+            </div>
+            <div class="stat-value" id="avg-price">$0</div>
+            <div class="stat-label">Average Price</div>
+          </div>
+        </div>
+
+        <div class="products-section">
+          <div class="section-header">
+            <h2 class="section-title">Your Products</h2>
+          </div>
+          <div id="products-container" class="products-grid">
+            <!-- Products will be loaded here -->
+          </div>
+        </div>
+      </main>
+    </div>
+
+    <!-- Product Modal -->
+    <div id="product-modal" class="modal">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h3 class="modal-title" id="modal-title">Add New Product</h3>
+          <button class="close-btn" id="close-modal">
+            <i class="fas fa-times"></i>
+          </button>
+        </div>
+        <div class="modal-body">
+          <form id="product-form">
+            <div class="form-group">
+              <label class="form-label">Product Name</label>
+              <input type="text" id="prod-name" class="form-input" placeholder="Enter product name" required>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Description</label>
+              <textarea id="prod-desc" class="form-input form-textarea" placeholder="Enter product description" required></textarea>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Price ($)</label>
+              <input type="number" id="prod-price" class="form-input" placeholder="0.00" min="0" step="0.01" required>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Image URL</label>
+              <input type="url" id="prod-img" class="form-input" placeholder="https://example.com/image.jpg" required>
+            </div>
+            <button type="submit" class="btn btn-primary" style="width: 100%;">
+              <i class="fas fa-save"></i>
+              <span id="submit-text">Add Product</span>
+            </button>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/12.0.0/firebase-app.js";
+    import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.0.0/firebase-auth.js";
+    import { getFirestore, collection, addDoc, getDocs, deleteDoc, doc, updateDoc } from "https://www.gstatic.com/firebasejs/12.0.0/firebase-firestore.js";
+
+    // Firebase Configuration
+    const firebaseConfig = {
+      apiKey: "AIzaSyBZqkU4NyjVjRDnmgcZ_spzt1CH0AwxaVk",
+      authDomain: "product-dashboard-8d7dd.firebaseapp.com",
+      projectId: "product-dashboard-8d7dd",
+      storageBucket: "product-dashboard-8d7dd.firebasestorage.app",
+      messagingSenderId: "267036054200",
+      appId: "1:267036054200:web:e1c85dc328a19a91a19a4d",
+      measurementId: "G-S54LDHEPR3"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
+
+    // DOM Elements
+    const authSection = document.getElementById("auth-section");
+    const dashboard = document.getElementById("dashboard");
+    const productModal = document.getElementById("product-modal");
+    const productsContainer = document.getElementById("products-container");
+
+    let isLogin = true;
+    let editingProductId = null;
+    let products = [];
+
+    // Authentication Toggle
+    document.getElementById("toggle-auth").onclick = () => {
+      isLogin = !isLogin;
+      updateAuthForm();
+    };
+
+    function updateAuthForm() {
+      const title = document.getElementById("form-title");
+      const subtitle = document.getElementById("form-subtitle");
+      const btnText = document.getElementById("auth-btn-text");
+      const toggleText = document.getElementById("toggle-text");
+      const toggleAuth = document.getElementById("toggle-auth");
+
+      if (isLogin) {
+        title.textContent = "Welcome Back";
+        subtitle.textContent = "Sign in to manage your products";
+        btnText.textContent = "Sign In";
+        toggleText.textContent = "Don't have an account?";
+        toggleAuth.textContent = "Create Account";
+      } else {
+        title.textContent = "Create Account";
+        subtitle.textContent = "Join us to start managing products";
+        btnText.textContent = "Sign Up";
+        toggleText.textContent = "Already have an account?";
+        toggleAuth.textContent = "Sign In";
+      }
+    }
+
+    // Authentication Handler
+    document.getElementById("auth-form").onsubmit = async (e) => {
+      e.preventDefault();
+      
+      const email = document.getElementById("email").value;
+      const password = document.getElementById("password").value;
+      const authBtn = document.getElementById("auth-btn");
+
+      if (!email || !password) {
+        showNotification("Please fill in all fields", "error");
+        return;
+      }
+
+      const originalContent = authBtn.innerHTML;
+      authBtn.innerHTML = '<div class="spinner" style="width: 20px; height: 20px; border-width: 2px;"></div>';
+      authBtn.disabled = true;
+
+      try {
+        if (isLogin) {
+          await signInWithEmailAndPassword(auth, email, password);
+          showNotification("Welcome back!", "success");
+        } else {
+          await createUserWithEmailAndPassword(auth, email, password);
+          showNotification("Account created successfully!", "success");
+        }
+      } catch (err) {
+        showNotification(getErrorMessage(err.code), "error");
+      } finally {
+        authBtn.innerHTML = originalContent;
+        authBtn.disabled = false;
+      }
+    };
+
+    function getErrorMessage(errorCode) {
+      switch (errorCode) {
+        case 'auth/user-not-found':
+          return 'No account found with this email';
+        case 'auth/wrong-password':
+          return 'Incorrect password';
+        case 'auth/email-already-in-use':
+          return 'Email is already registered';
+        case 'auth/weak-password':
+          return 'Password should be at least 6 characters';
+        case 'auth/invalid-email':
+          return 'Invalid email address';
+        default:
+          return 'Authentication failed. Please try again.';
+      }
+    }
+
+    // Auth State Observer
+    onAuthStateChanged(auth, user => {
+      if (user) {
+        authSection.classList.add("hidden");
+        dashboard.classList.remove("hidden");
+        loadProducts();
+      } else {
+        authSection.classList.remove("hidden");
+        dashboard.classList.add("hidden");
+      }
+    });
+
+    // Logout
+    document.getElementById("logout").onclick = () => {
+      signOut(auth);
+      showNotification("Logged out successfully", "success");
+    };
+
+    // Modal Controls
+    document.getElementById("add-product-btn").onclick = () => {
+      editingProductId = null;
+      document.getElementById("modal-title").textContent = "Add New Product";
+      document.getElementById("submit-text").textContent = "Add Product";
+      document.getElementById("product-form").reset();
+      showModal();
+    };
+
+    document.getElementById("close-modal").onclick = hideModal;
+
+    productModal.onclick = (e) => {
+      if (e.target === productModal) hideModal();
+    };
+
+    function showModal() {
+      productModal.classList.add("show");
+      document.body.style.overflow = "hidden";
+    }
+
+    function hideModal() {
+      productModal.classList.remove("show");
+      document.body.style.overflow = "auto";
+      editingProductId = null;
+    }
+
+    // Product Form Handler
+    document.getElementById("product-form").onsubmit = async (e) => {
+      e.preventDefault();
+      
+      const name = document.getElementById("prod-name").value.trim();
+      const desc = document.getElementById("prod-desc").value.trim();
+      const price = parseFloat(document.getElementById("prod-price").value);
+      const image = document.getElementById("prod-img").value.trim();
+
+      if (!name || !desc || !price || !image) {
+        showNotification("Please fill in all fields", "error");
+        return;
+      }
+
+      if (price <= 0) {
+        showNotification("Price must be greater than 0", "error");
+        return;
+      }
+
+      const submitBtn = e.target.querySelector('button[type="submit"]');
+      const originalContent = submitBtn.innerHTML;
+      submitBtn.innerHTML = '<div class="spinner" style="width: 20px; height: 20px; border-width: 2px;"></div>';
+      submitBtn.disabled = true;
+
+      try {
+        const productData = {
+          name,
+          description: desc,
+          price,
+          image,
+          createdAt: new Date()
+        };
+
+        if (editingProductId) {
+          await updateDoc(doc(db, "products", editingProductId), productData);
+          showNotification("Product updated successfully!", "success");
+        } else {
+          await addDoc(collection(db, "products"), productData);
+          showNotification("Product added successfully!", "success");
+        }
+        
+        hideModal();
+        loadProducts();
+      } catch (error) {
+        console.error("Error saving product:", error);
+        showNotification("Failed to save product. Please try again.", "error");
+      } finally {
+        submitBtn.innerHTML = originalContent;
+        submitBtn.disabled = false;
+      }
+    };
+
+    // Load Products
+    async function loadProducts() {
+      showLoadingState();
+      
+      try {
+        const snapshot = await getDocs(collection(db, "products"));
+        products = [];
+        
+        snapshot.forEach((docSnap) => {
+          products.push({
+            id: docSnap.id,
+            ...docSnap.data()
+          });
+        });
+        
+        renderProducts();
+        updateStats();
+      } catch (error) {
+        console.error("Error loading products:", error);
+        showErrorState();
+      }
+    }
+
+    function showLoadingState() {
+      productsContainer.innerHTML = `
+        <div style="grid-column: 1 / -1; display: flex; justify-content: center; padding: 60px;">
+          <div class="spinner"></div>
+        </div>
+      `;
+    }
+
+    function showErrorState() {
+      productsContainer.innerHTML = `
+        <div class="empty-state" style="grid-column: 1 / -1;">
+          <div class="empty-icon">
+            <i class="fas fa-exclamation-triangle"></i>
+          </div>
+          <h3 class="empty-title">Failed to load products</h3>
+          <p class="empty-subtitle">Please check your connection and try again</p>
+        </div>
+      `;
+    }
+
+    function renderProducts() {
+      if (products.length === 0) {
+        productsContainer.innerHTML = `
+          <div class="empty-state" style="grid-column: 1 / -1;">
+            <div class="empty-icon">
+              <i class="fas fa-box-open"></i>
+            </div>
+            <h3 class="empty-title">No products yet</h3>
+            <p class="empty-subtitle">Add your first product to get started!</p>
+          </div>
+        `;
+        return;
+      }
+
+      productsContainer.innerHTML = products.map((product, index) => `
+        <div class="product-card" style="animation-delay: ${index * 0.1}s;">
+          <div class="product-image-container">
+            <img src="${product.image}" alt="${product.name}" class="product-image" 
+                 onerror="this.src='https://via.placeholder.com/400x240/e2e8f0/64748b?text=No+Image'">
+            <div class="product-actions">
+              <button class="action-btn edit-btn" onclick="editProduct('${product.id}')">
+                <i class="fas fa-edit"></i>
+              </button>
+              <button class="action-btn delete-btn" onclick="deleteProduct('${product.id}', '${product.name.replace(/'/g, "\\'")}')">
+                <i class="fas fa-trash"></i>
+              </button>
+            </div>
+          </div>
+          <div class="product-content">
+            <h3 class="product-title">${product.name}</h3>
+            <p class="product-description">${product.description}</p>
+            <div class="product-price">${product.price.toFixed(2)}</div>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    function updateStats() {
+      const totalProducts = products.length;
+      const totalValue = products.reduce((sum, product) => sum + product.price, 0);
+      const avgPrice = totalProducts > 0 ? totalValue / totalProducts : 0;
+
+      document.getElementById("total-products").textContent = totalProducts;
+      document.getElementById("total-value").textContent = `${totalValue.toFixed(2)}`;
+      document.getElementById("avg-price").textContent = `${avgPrice.toFixed(2)}`;
+    }
+
+    // Edit Product
+    window.editProduct = (id) => {
+      const product = products.find(p => p.id === id);
+      if (!product) return;
+
+      editingProductId = id;
+      document.getElementById("modal-title").textContent = "Edit Product";
+      document.getElementById("submit-text").textContent = "Update Product";
+      
+      document.getElementById("prod-name").value = product.name;
+      document.getElementById("prod-desc").value = product.description;
+      document.getElementById("prod-price").value = product.price;
+      document.getElementById("prod-img").value = product.image;
+      
+      showModal();
+    };
+
+    // Delete Product
+    window.deleteProduct = async (id, name) => {
+      if (!confirm(`Are you sure you want to delete "${name}"?\n\nThis action cannot be undone.`)) return;
+      
+      try {
+        await deleteDoc(doc(db, "products", id));
+        showNotification("Product deleted successfully", "success");
+        loadProducts();
+      } catch (error) {
+        console.error("Error deleting product:", error);
+        showNotification("Failed to delete product. Please try again.", "error");
+      }
+    };
+
+    // Notification System
+    function showNotification(message, type = "success") {
+      // Remove existing notification
+      const existing = document.querySelector('.notification');
+      if (existing) existing.remove();
+
+      const notification = document.createElement("div");
+      notification.className = `notification ${type}`;
+      
+      const icon = type === "success" ? "check-circle" : 
+                   type === "error" ? "exclamation-circle" : "info-circle";
+      
+      notification.innerHTML = `
+        <div class="notification-icon">
+          <i class="fas fa-${icon}"></i>
+        </div>
+        <div class="notification-text">${message}</div>
+      `;
+      
+      document.body.appendChild(notification);
+      
+      // Trigger animation
+      setTimeout(() => notification.classList.add("show"), 100);
+      
+      // Auto remove
+      setTimeout(() => {
+        notification.classList.remove("show");
+        setTimeout(() => notification.remove(), 400);
+      }, 4000);
+    }
+
+    // Keyboard shortcuts
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && productModal.classList.contains('show')) {
+        hideModal();
+      }
+      if (e.ctrlKey && e.key === 'n') {
+        e.preventDefault();
+        if (!dashboard.classList.contains('hidden')) {
+          document.getElementById("add-product-btn").click();
+        }
+      }
+    });
+
+    // Initialize
+    updateAuthForm();
+  </script>
+</body>
+</html>
